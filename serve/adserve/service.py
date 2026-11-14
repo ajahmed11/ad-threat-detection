@@ -65,9 +65,6 @@ def run(cfg: ServeConfig, *, replay_path: Path | None = None, from_start: bool =
     )
 
     bundle = ModelBundle.load(cfg.bundle_dir, device=cfg.device)
-    # meta.json may pin the log-key field so inference matches training exactly.
-    if "log_key_field" in bundle.meta:
-        cfg.log_key_field = bundle.meta["log_key_field"]
     if not math.isnan(cfg.threshold):
         threshold = cfg.threshold
     else:
@@ -75,13 +72,15 @@ def run(cfg: ServeConfig, *, replay_path: Path | None = None, from_start: bool =
     window_size = bundle.window_size or cfg.window_size
     model_name = bundle.meta.get("model", "model")
 
-    featurizer = Featurizer(bundle.vocab, cfg.log_key_field, cfg.host_field)
+    # The featurizer's composite-key spec comes from the bundle, so the live
+    # log key matches the training definition exactly.
+    featurizer = Featurizer.from_meta(bundle.vocab, bundle.meta)
     store = WindowStore(window_size, cfg.idle_evict_s)
     emitter = AnomalyEmitter(cfg.out_path)
 
-    log.info("loaded %s | vocab=%d window=%d threshold=%.3f key=%s device=%s",
+    log.info("loaded %s | vocab=%d window=%d threshold=%.3f key_fields=%s device=%s",
              model_name, len(bundle.vocab), window_size, threshold,
-             cfg.log_key_field, cfg.device)
+             "|".join(featurizer.key_fields), cfg.device)
 
     if replay_path is not None:
         source = replay(replay_path)

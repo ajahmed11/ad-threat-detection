@@ -16,105 +16,87 @@ service, not a design.
  Active Response ◀── rule 100701 ◀── <localfile> ◀── ml_anomalies.json ◀── emit
 ```
 
-## Why it is faithful to the research
+## Faithful to the research — verified
 
-- **No architecture drift.** The service pickles and loads the *whole*
-  `nn.Module` you trained (`admodel.models.MaskedRNN` / `LogBERT`) — it never
-  re-implements the network.
-- **Identical tokenisation.** It reuses the frozen training vocabulary
-  (`vocab.json`, built from the train split only) and maps unseen keys to
-  `<unk>`, so the live token stream matches the evaluation stream.
-- **Identical scoring.** `scorer.score()` is the max-surprisal reduction from
-  the evaluation harness: mask each position, take the single most anomalous.
-- **Advisory, not autonomous.** The service only raises a signal; the SIEM rule
-  decides whether to contain. That keeps the ML engine auditable.
+adserve's scorer was checked against the `admodel/evaluate.py` harness on the
+real 192 test windows: **max|difference| = 0.000000, 192/192 identical
+decisions** at the trained threshold. It deploys the exact model behaviour, it
+does not re-implement it:
+
+- **No architecture drift.** The service loads the *whole* `nn.Module` you
+  trained (`admodel.models.MaskedRNN` / `LogBERT`).
+- **Identical log key.** The featurizer rebuilds the pipeline's **5-part
+  composite key** — `event_id|logon_type|ticket_enc|preauth|status_class` —
+  from each alert's `data.win` fields, mirroring `adpipe/parse_archives.py` and
+  `build_dataset.make_log_key`. The spec lives in the bundle's `meta.json`, so
+  inference matches training by construction. (It is **not** the Wazuh rule id.)
+- **Identical vocab.** It reuses the frozen training vocab (list form, index =
+  id, built from the train split only); unseen keys → `<unk>`.
+- **Identical scoring.** Mask each position, take the single most anomalous
+  (max surprisal), compare to the F1-optimal threshold frozen at train time.
+- **Advisory, not autonomous.** It raises a signal; the SIEM rule decides
+  whether to contain. The ML engine stays auditable.
 
 ## 1. Build a serving bundle
 
-A bundle is a folder with `model.pt`, `vocab.json`, `meta.json`. Produce one
-from a trained checkpoint:
+Your training harness scored models in memory without saving them, so there is
+no checkpoint to package. `make_bundle.py` trains the chosen model (seed 0),
+captures the F1-optimal threshold exactly as `evaluate.py` does, and writes the
+bundle in one step. **Run it from your admodel project root** (where
+`import admodel` works and the adpipe dataset sits beside it):
 
-```bash
-python export_bundle.py \
-    --checkpoint ../models/artifacts/bilstm.pt \
-    --vocab      ../models/artifacts/vocab.json \
-    --threshold  7.3 \
-    --model      bilstm \
-    --out        serve_bundle
+```powershell
+# copy make_bundle.py next to run_all.py, then:
+cd D:\Final_Year\CSP\Lab_Project\data\raw\admodel
+python make_bundle.py bilstm
 ```
 
-`--threshold` is the decision boundary you froze at train time (e.g. the 99th
-percentile of benign-window scores — the same value behind the reported FPR).
+It writes `serve_bundle/` containing:
+- `model.pt` — the whole trained BiLSTM module
+- `vocab.json` — the frozen training vocabulary
+- `meta.json` — threshold, window size, mask id, the featurizer key spec, and
+  `admodel_path` (so the service can unpickle the module)
 
-If your training saved a `state_dict` rather than a whole module, add
-`--state-dict --arch bilstm` and run it from the repo root so `admodel` is
-importable.
-
-**Or** write the bundle directly at the end of `train.py`, where the live
-objects are already in scope:
-
-```python
-import json, torch
-from pathlib import Path
-out = Path("serve/serve_bundle"); out.mkdir(parents=True, exist_ok=True)
-torch.save(model.eval(), out / "model.pt")
-(out / "vocab.json").write_text(json.dumps(vocab.token_to_id))
-(out / "meta.json").write_text(json.dumps({
-    "model": "bilstm", "threshold": thr_99pct,
-    "window_size": cfg.window_size, "log_key_field": "rule.id",
-}))
-```
-
-> **Match the log key.** `log_key_field` must be the *same* field your
-> `build_dataset.py` used to form each event token (default `rule.id`). If the
-> pipeline keyed on something else (e.g. Windows `data.win.system.eventID`),
-> set `--log-key-field` to that dotted path.
+Swap `bilstm` for `lstm` or `logbert` to bundle a different model. (LogBERT is
+served on masked-surprisal only; its hypersphere term is not applied live.)
 
 ## 2. Demo offline (no live attack) — replay mode
 
 Point it at a historical alert capture and watch it score:
 
-```bash
-python -m adserve.service \
-    --bundle-dir serve_bundle \
-    --replay ../data/alerts_2025-11-09.json \
-    --out /tmp/anoms.json
-cat /tmp/anoms.json | python -m json.tool
+```powershell
+cd D:\Final_Year\CSP\ad-threat-detection\ad-threat-detection\serve
+python -m adserve.service `
+    --bundle-dir D:\Final_Year\CSP\Lab_Project\data\raw\admodel\serve_bundle `
+    --replay <your_nov9_alerts.json> `
+    --out anoms.json
+Get-Content anoms.json | ConvertFrom-Json | Format-List
 ```
 
-Ideal for the viva: deterministic, repeatable, and it exercises the exact
-production code path.
+Use your **real** Wazuh capture (e.g. the Nov 9 `alerts.json`), not synthetic
+data — the models judge event *sequences*, so only realistic traffic separates
+cleanly. On the real test set, benign windows stay below threshold 83.8% of the
+time and the DCSync burst scores highest.
 
 ## 3. Run live on the SIEM node
 
 ```bash
 python -m adserve.service \
-    --bundle-dir serve_bundle \
+    --bundle-dir /opt/.../serve_bundle \
     --alerts /var/ossec/logs/alerts/alerts.json \
     --out    /var/ossec/logs/ml_anomalies.json
 ```
 
-As a managed daemon:
-
-```bash
-sudo cp deploy/adserve.service /etc/systemd/system/
-sudo systemctl daemon-reload && sudo systemctl enable --now adserve
-journalctl -u adserve -f
-```
+As a managed daemon: `deploy/adserve.service` (systemd). Logs via
+`journalctl -u adserve -f`.
 
 ## 4. Close the loop into Wazuh
 
 Add the `<localfile>` from `deploy/ossec-localfile-snippet.xml` so the manager
-tails `ml_anomalies.json`, then the rules in that file lift the score and
+tails `ml_anomalies.json`; the rules in that file lift the score and
 (optionally) bind the existing `disable-ad-account` command to the
-high-severity ML rule. A model-raised anomaly now flows through the same
+high-severity ML rule. A model-raised anomaly then flows through the same
 containment path as a rule-based detection.
-
-## Configuration
-
-Every setting takes a CLI flag or an `ADSERVE_*` env var (see `config.py`).
-Key ones: `--bundle-dir`, `--alerts`, `--out`, `--threshold`, `--window-size`,
-`--log-key-field`, `--host-field`, `--device`.
 
 ## Emitted record
 
@@ -124,35 +106,42 @@ Key ones: `--bundle-dir`, `--alerts`, `--out`, `--threshold`, `--window-size`,
   "integration": "adserve",
   "model": "bilstm",
   "host": "DC01",
-  "anomaly_score": 9.42,
-  "threshold": 7.30,
-  "severity": "high",
-  "window": ["4624", "4769", "4662", "..."],
-  "detail": { "peak_position": 12, "peak_token": "4662",
+  "anomaly_score": 13.82,
+  "threshold": 9.68,
+  "severity": "medium",
+  "window": ["4624|2|na|na|na", "4769|na|0x17|na|ok", "4662|na|na|na|na", "..."],
+  "detail": { "peak_position": 7, "peak_token": "<unk>",
               "per_position_surprisal": [ ... ] }
 }
 ```
 
-The `detail` block gives the analyst the single event that drove the score —
-useful triage context, and a concrete talking point for the demo.
+`detail` names the single event that drove the score — triage context, and a
+concrete talking point for the demo.
+
+## Configuration
+
+Every setting takes a CLI flag or an `ADSERVE_*` env var (see `config.py`):
+`--bundle-dir`, `--alerts`, `--out`, `--threshold`, `--window-size`,
+`--host-field`, `--device`. The composite-key spec comes from the bundle's
+`meta.json`, so you don't configure it by hand.
 
 ## Tests
 
 ```bash
 pip install -r requirements-serve.txt
-python -m pytest adserve/tests -q
+set PYTHONPATH=.   &&   python -m pytest adserve/tests -q   # 7 tests
 ```
 
-The suite uses a tiny stand-in model, so it runs in CI without the trained
-weights.
+The suite uses a tiny stand-in model and list-form vocab, so it runs in CI
+without the trained weights.
 
 ## Limitations (state honestly in the report)
 
 - Scoring quality is bounded by the offline models: strong on burst attacks
   (DCSync), weaker on single-event signatures where the rule layer wins. The
-  service does not change the models — it deploys them.
-- The log key must match the training definition exactly; a mismatch silently
-  degrades to `<unk>`-heavy windows.
-- Windows forwarding gaps upstream (e.g. the Sysmon 17/18 / 5145 gap noted as a
-  threat to validity) limit what any downstream consumer, this service
+  service deploys the models, it does not change them.
+- The live log key must match the training definition; the featurizer enforces
+  this from `meta.json`, but a pipeline change means rebuilding the bundle.
+- Upstream telemetry gaps (e.g. the Sysmon 17/18 / 5145 forwarding gap noted as
+  a threat to validity) limit what any downstream consumer, this service
   included, can see.

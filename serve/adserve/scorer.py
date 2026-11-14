@@ -26,16 +26,21 @@ class ModelBundle:
         self.vocab = vocab
         self.meta = meta
         self.window_size = int(meta.get("window_size", 20))
-        # mask id: prefer the vocab's <mask>, else meta, else fall back to <unk>
-        self.mask_id = vocab.mask_id
-        if self.mask_id is None:
-            self.mask_id = int(meta.get("mask_id", vocab.unk_id))
+        # mask id: the training pipeline uses an extra embedding slot at index
+        # len(vocab), recorded in meta. Fall back to that, else <unk>.
+        self.mask_id = int(meta.get("mask_id", len(vocab)))
 
     @classmethod
     def load(cls, bundle_dir: Path, device: str = "cpu") -> "ModelBundle":
+        import sys
         bundle_dir = Path(bundle_dir)
         meta = json.loads((bundle_dir / "meta.json").read_text())
         vocab = Vocab(json.loads((bundle_dir / "vocab.json").read_text()))
+        # The pickled module references admodel.models.{MaskedRNN,LogBERT}; make
+        # that package importable. meta records where it lives at build time.
+        ap = meta.get("admodel_path")
+        if ap and ap not in sys.path:
+            sys.path.insert(0, ap)
         # weights_only=False: the bundle is a trusted artifact we produced.
         model = torch.load(bundle_dir / "model.pt", map_location=device, weights_only=False)
         return cls(model, vocab, meta, device=device)
