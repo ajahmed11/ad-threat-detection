@@ -1,0 +1,499 @@
+{
+  "inputs": {
+    "archive": "2026-Nov-ossec-archive-09.json",
+    "bundle": "bilstm",
+    "min_per_alert": 5.0,
+    "hourly_rate": 30.0
+  },
+  "operational": {
+    "windows_scored": 12713,
+    "alerts": 1219,
+    "alert_rate": 0.0959,
+    "incidents_deduped": 52,
+    "operating_threshold": 9.728,
+    "by_host": {
+      "DC01": 1075,
+      "IT-PC01": 76,
+      "MK-PC01": 68
+    },
+    "alerts_per_hour_peak": {
+      "hour_utc": 16,
+      "alerts": 543
+    },
+    "by_hour": {
+      "0": 0,
+      "1": 41,
+      "2": 21,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "13": 0,
+      "14": 57,
+      "15": 56,
+      "16": 543,
+      "17": 423,
+      "18": 78,
+      "19": 0,
+      "20": 0,
+      "21": 0,
+      "22": 0,
+      "23": 0
+    },
+    "top_event_ids": {
+      "4768": 630,
+      "4771": 188,
+      "<unk>": 127,
+      "521": 96,
+      "4769": 55,
+      "5136": 27,
+      "4719": 19,
+      "1003": 18,
+      "4624": 17,
+      "4742": 17
+    }
+  },
+  "operating_points": {
+    "f1_optimal": {
+      "threshold": 9.885,
+      "precision": 0.147,
+      "recall": 0.385,
+      "fpr": 0.162,
+      "f1": 0.213,
+      "alerts_per_day": 1202.0,
+      "analyst_hours_per_day": 100.17,
+      "analyst_cost_per_year": 1096825.0
+    },
+    "low_fpr": {
+      "threshold": 14.226,
+      "precision": 0.0,
+      "recall": 0.0,
+      "fpr": 0.006,
+      "f1": 0.0,
+      "alerts_per_day": 1.0,
+      "analyst_hours_per_day": 0.08,
+      "analyst_cost_per_year": 912.0
+    }
+  },
+  "threshold_sweep": [
+    {
+      "threshold": 0.118,
+      "precision": 0.068,
+      "recall": 1.0,
+      "fpr": 1.0,
+      "f1": 0.127,
+      "alerts_per_day": 12713.0,
+      "analyst_hours_per_day": 1059.42,
+      "analyst_cost_per_year": 11600613.0
+    },
+    {
+      "threshold": 0.48,
+      "precision": 0.068,
+      "recall": 1.0,
+      "fpr": 0.989,
+      "f1": 0.128,
+      "alerts_per_day": 11929.0,
+      "analyst_hours_per_day": 994.08,
+      "analyst_cost_per_year": 10885212.0
+    },
+    {
+      "threshold": 0.842,
+      "precision": 0.069,
+      "recall": 1.0,
+      "fpr": 0.978,
+      "f1": 0.129,
+      "alerts_per_day": 11723.0,
+      "analyst_hours_per_day": 976.92,
+      "analyst_cost_per_year": 10697238.0
+    },
+    {
+      "threshold": 1.203,
+      "precision": 0.073,
+      "recall": 1.0,
+      "fpr": 0.916,
+      "f1": 0.137,
+      "alerts_per_day": 11242.0,
+      "analyst_hours_per_day": 936.83,
+      "analyst_cost_per_year": 10258325.0
+    },
+    {
+      "threshold": 1.565,
+      "precision": 0.076,
+      "recall": 1.0,
+      "fpr": 0.888,
+      "f1": 0.141,
+      "alerts_per_day": 10665.0,
+      "analyst_hours_per_day": 888.75,
+      "analyst_cost_per_year": 9731812.0
+    },
+    {
+      "threshold": 1.927,
+      "precision": 0.079,
+      "recall": 1.0,
+      "fpr": 0.849,
+      "f1": 0.146,
+      "alerts_per_day": 10108.0,
+      "analyst_hours_per_day": 842.33,
+      "analyst_cost_per_year": 9223550.0
+    },
+    {
+      "threshold": 2.289,
+      "precision": 0.081,
+      "recall": 1.0,
+      "fpr": 0.827,
+      "f1": 0.149,
+      "alerts_per_day": 9796.0,
+      "analyst_hours_per_day": 816.33,
+      "analyst_cost_per_year": 8938850.0
+    },
+    {
+      "threshold": 2.65,
+      "precision": 0.07,
+      "recall": 0.846,
+      "fpr": 0.821,
+      "f1": 0.129,
+      "alerts_per_day": 9529.0,
+      "analyst_hours_per_day": 794.08,
+      "analyst_cost_per_year": 8695212.0
+    },
+    {
+      "threshold": 3.012,
+      "precision": 0.071,
+      "recall": 0.846,
+      "fpr": 0.804,
+      "f1": 0.131,
+      "alerts_per_day": 9003.0,
+      "analyst_hours_per_day": 750.25,
+      "analyst_cost_per_year": 8215238.0
+    },
+    {
+      "threshold": 3.374,
+      "precision": 0.066,
+      "recall": 0.769,
+      "fpr": 0.788,
+      "f1": 0.122,
+      "alerts_per_day": 8357.0,
+      "analyst_hours_per_day": 696.42,
+      "analyst_cost_per_year": 7625762.0
+    },
+    {
+      "threshold": 3.735,
+      "precision": 0.071,
+      "recall": 0.769,
+      "fpr": 0.726,
+      "f1": 0.131,
+      "alerts_per_day": 7544.0,
+      "analyst_hours_per_day": 628.67,
+      "analyst_cost_per_year": 6883900.0
+    },
+    {
+      "threshold": 4.097,
+      "precision": 0.074,
+      "recall": 0.692,
+      "fpr": 0.626,
+      "f1": 0.134,
+      "alerts_per_day": 6794.0,
+      "analyst_hours_per_day": 566.17,
+      "analyst_cost_per_year": 6199525.0
+    },
+    {
+      "threshold": 4.459,
+      "precision": 0.082,
+      "recall": 0.692,
+      "fpr": 0.564,
+      "f1": 0.146,
+      "alerts_per_day": 5954.0,
+      "analyst_hours_per_day": 496.17,
+      "analyst_cost_per_year": 5433025.0
+    },
+    {
+      "threshold": 4.821,
+      "precision": 0.089,
+      "recall": 0.692,
+      "fpr": 0.514,
+      "f1": 0.158,
+      "alerts_per_day": 5187.0,
+      "analyst_hours_per_day": 432.25,
+      "analyst_cost_per_year": 4733138.0
+    },
+    {
+      "threshold": 5.182,
+      "precision": 0.074,
+      "recall": 0.538,
+      "fpr": 0.486,
+      "f1": 0.131,
+      "alerts_per_day": 4656.0,
+      "analyst_hours_per_day": 388.0,
+      "analyst_cost_per_year": 4248600.0
+    },
+    {
+      "threshold": 5.544,
+      "precision": 0.084,
+      "recall": 0.538,
+      "fpr": 0.425,
+      "f1": 0.146,
+      "alerts_per_day": 3942.0,
+      "analyst_hours_per_day": 328.5,
+      "analyst_cost_per_year": 3597075.0
+    },
+    {
+      "threshold": 5.906,
+      "precision": 0.088,
+      "recall": 0.462,
+      "fpr": 0.346,
+      "f1": 0.148,
+      "alerts_per_day": 3104.0,
+      "analyst_hours_per_day": 258.67,
+      "analyst_cost_per_year": 2832400.0
+    },
+    {
+      "threshold": 6.268,
+      "precision": 0.1,
+      "recall": 0.462,
+      "fpr": 0.302,
+      "f1": 0.164,
+      "alerts_per_day": 2629.0,
+      "analyst_hours_per_day": 219.08,
+      "analyst_cost_per_year": 2398962.0
+    },
+    {
+      "threshold": 6.629,
+      "precision": 0.103,
+      "recall": 0.462,
+      "fpr": 0.291,
+      "f1": 0.169,
+      "alerts_per_day": 2369.0,
+      "analyst_hours_per_day": 197.42,
+      "analyst_cost_per_year": 2161712.0
+    },
+    {
+      "threshold": 6.991,
+      "precision": 0.109,
+      "recall": 0.462,
+      "fpr": 0.274,
+      "f1": 0.176,
+      "alerts_per_day": 2147.0,
+      "analyst_hours_per_day": 178.92,
+      "analyst_cost_per_year": 1959137.0
+    },
+    {
+      "threshold": 7.353,
+      "precision": 0.118,
+      "recall": 0.462,
+      "fpr": 0.251,
+      "f1": 0.188,
+      "alerts_per_day": 1911.0,
+      "analyst_hours_per_day": 159.25,
+      "analyst_cost_per_year": 1743788.0
+    },
+    {
+      "threshold": 7.714,
+      "precision": 0.128,
+      "recall": 0.462,
+      "fpr": 0.229,
+      "f1": 0.2,
+      "alerts_per_day": 1756.0,
+      "analyst_hours_per_day": 146.33,
+      "analyst_cost_per_year": 1602350.0
+    },
+    {
+      "threshold": 8.076,
+      "precision": 0.133,
+      "recall": 0.462,
+      "fpr": 0.218,
+      "f1": 0.207,
+      "alerts_per_day": 1593.0,
+      "analyst_hours_per_day": 132.75,
+      "analyst_cost_per_year": 1453612.0
+    },
+    {
+      "threshold": 8.438,
+      "precision": 0.119,
+      "recall": 0.385,
+      "fpr": 0.207,
+      "f1": 0.182,
+      "alerts_per_day": 1501.0,
+      "analyst_hours_per_day": 125.08,
+      "analyst_cost_per_year": 1369662.0
+    },
+    {
+      "threshold": 8.8,
+      "precision": 0.125,
+      "recall": 0.385,
+      "fpr": 0.196,
+      "f1": 0.189,
+      "alerts_per_day": 1409.0,
+      "analyst_hours_per_day": 117.42,
+      "analyst_cost_per_year": 1285712.0
+    },
+    {
+      "threshold": 9.161,
+      "precision": 0.128,
+      "recall": 0.385,
+      "fpr": 0.19,
+      "f1": 0.192,
+      "alerts_per_day": 1351.0,
+      "analyst_hours_per_day": 112.58,
+      "analyst_cost_per_year": 1232788.0
+    },
+    {
+      "threshold": 9.523,
+      "precision": 0.143,
+      "recall": 0.385,
+      "fpr": 0.168,
+      "f1": 0.208,
+      "alerts_per_day": 1255.0,
+      "analyst_hours_per_day": 104.58,
+      "analyst_cost_per_year": 1145188.0
+    },
+    {
+      "threshold": 9.885,
+      "precision": 0.147,
+      "recall": 0.385,
+      "fpr": 0.162,
+      "f1": 0.213,
+      "alerts_per_day": 1202.0,
+      "analyst_hours_per_day": 100.17,
+      "analyst_cost_per_year": 1096825.0
+    },
+    {
+      "threshold": 10.247,
+      "precision": 0.147,
+      "recall": 0.385,
+      "fpr": 0.162,
+      "f1": 0.213,
+      "alerts_per_day": 1153.0,
+      "analyst_hours_per_day": 96.08,
+      "analyst_cost_per_year": 1052112.0
+    },
+    {
+      "threshold": 10.608,
+      "precision": 0.152,
+      "recall": 0.385,
+      "fpr": 0.156,
+      "f1": 0.217,
+      "alerts_per_day": 1098.0,
+      "analyst_hours_per_day": 91.5,
+      "analyst_cost_per_year": 1001925.0
+    },
+    {
+      "threshold": 10.97,
+      "precision": 0.152,
+      "recall": 0.385,
+      "fpr": 0.156,
+      "f1": 0.217,
+      "alerts_per_day": 1065.0,
+      "analyst_hours_per_day": 88.75,
+      "analyst_cost_per_year": 971812.0
+    },
+    {
+      "threshold": 11.332,
+      "precision": 0.172,
+      "recall": 0.385,
+      "fpr": 0.134,
+      "f1": 0.238,
+      "alerts_per_day": 969.0,
+      "analyst_hours_per_day": 80.75,
+      "analyst_cost_per_year": 884212.0
+    },
+    {
+      "threshold": 11.693,
+      "precision": 0.172,
+      "recall": 0.385,
+      "fpr": 0.134,
+      "f1": 0.238,
+      "alerts_per_day": 883.0,
+      "analyst_hours_per_day": 73.58,
+      "analyst_cost_per_year": 805737.0
+    },
+    {
+      "threshold": 12.055,
+      "precision": 0.2,
+      "recall": 0.385,
+      "fpr": 0.112,
+      "f1": 0.263,
+      "alerts_per_day": 680.0,
+      "analyst_hours_per_day": 56.67,
+      "analyst_cost_per_year": 620500.0
+    },
+    {
+      "threshold": 12.417,
+      "precision": 0.167,
+      "recall": 0.231,
+      "fpr": 0.084,
+      "f1": 0.194,
+      "alerts_per_day": 438.0,
+      "analyst_hours_per_day": 36.5,
+      "analyst_cost_per_year": 399675.0
+    },
+    {
+      "threshold": 12.779,
+      "precision": 0.062,
+      "recall": 0.077,
+      "fpr": 0.084,
+      "f1": 0.069,
+      "alerts_per_day": 262.0,
+      "analyst_hours_per_day": 21.83,
+      "analyst_cost_per_year": 239075.0
+    },
+    {
+      "threshold": 13.14,
+      "precision": 0.071,
+      "recall": 0.077,
+      "fpr": 0.073,
+      "f1": 0.074,
+      "alerts_per_day": 165.0,
+      "analyst_hours_per_day": 13.75,
+      "analyst_cost_per_year": 150562.0
+    },
+    {
+      "threshold": 13.502,
+      "precision": 0.091,
+      "recall": 0.077,
+      "fpr": 0.056,
+      "f1": 0.083,
+      "alerts_per_day": 101.0,
+      "analyst_hours_per_day": 8.42,
+      "analyst_cost_per_year": 92162.0
+    },
+    {
+      "threshold": 13.864,
+      "precision": 0.0,
+      "recall": 0.0,
+      "fpr": 0.022,
+      "f1": 0.0,
+      "alerts_per_day": 34.0,
+      "analyst_hours_per_day": 2.83,
+      "analyst_cost_per_year": 31025.0
+    },
+    {
+      "threshold": 14.226,
+      "precision": 0.0,
+      "recall": 0.0,
+      "fpr": 0.006,
+      "f1": 0.0,
+      "alerts_per_day": 1.0,
+      "analyst_hours_per_day": 0.08,
+      "analyst_cost_per_year": 912.0
+    }
+  ],
+  "rules_window_level": {
+    "windows": 192,
+    "attack_windows": 13,
+    "precision": 0.137,
+    "recall": 0.7692,
+    "f1": 0.2326,
+    "fpr": 0.352,
+    "per_attack_recall": {
+      "asrep": 0.4,
+      "dcsync": 1.0,
+      "spray": 1.0
+    }
+  }
+}
