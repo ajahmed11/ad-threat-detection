@@ -1,0 +1,46 @@
+<!--
+  Close the loop: let the Wazuh manager re-ingest adserve's anomalies so the
+  EXISTING rule + Active Response chain can act on a model-raised signal.
+
+  1) Add this <localfile> inside <ossec_config> on the manager so it tails the
+     anomaly stream as JSON.
+-->
+<localfile>
+  <log_format>json</log_format>
+  <location>/var/ossec/logs/ml_anomalies.json</location>
+</localfile>
+
+<!--
+  2) Rules that lift the JSON fields. Put in etc/rules/local_rules.xml.
+     Because log_format=json, Wazuh auto-decodes keys to json.<field>.
+     Adjust the rule id range to one free in your deployment.
+-->
+<!--
+<group name="adserve,ml,">
+  <rule id="100700" level="8">
+    <decoded_as>json</decoded_as>
+    <field name="integration">adserve</field>
+    <description>adserve: ML anomaly on $(host) (score $(anomaly_score))</description>
+    <mitre><id>T1558</id></mitre>
+  </rule>
+
+  <rule id="100701" level="12">
+    <if_sid>100700</if_sid>
+    <field name="severity">high</field>
+    <description>adserve: HIGH-confidence ML anomaly on $(host) - candidate for containment</description>
+  </rule>
+</group>
+-->
+
+<!--
+  3) (Optional) Bind Active Response to rule 100701 to auto-disable the account.
+     Reuse the existing <command name="disable-ad-account"> already defined for
+     the rule-based detections; only the rules_id changes.
+-->
+<!--
+<active-response>
+  <command>disable-ad-account</command>
+  <location>local</location>
+  <rules_id>100701</rules_id>
+</active-response>
+-->

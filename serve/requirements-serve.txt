@@ -1,0 +1,5 @@
+# Runtime deps for the live scoring service.
+# torch is already required to train; the service needs nothing beyond it.
+torch>=2.2
+# For the test suite only:
+pytest>=8.0

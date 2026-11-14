@@ -1,0 +1,30 @@
+# systemd unit for the live AD anomaly scoring service.
+# Install:  sudo cp deploy/adserve.service /etc/systemd/system/
+#           sudo systemctl daemon-reload && sudo systemctl enable --now adserve
+# Logs:     journalctl -u adserve -f
+[Unit]
+Description=adserve - live AD anomaly scoring (Wazuh -> sequence model)
+After=wazuh-manager.service
+Wants=wazuh-manager.service
+
+[Service]
+Type=simple
+# Run as a low-privilege user that can READ alerts.json and WRITE ml_anomalies.json.
+User=adserve
+Group=wazuh
+WorkingDirectory=/opt/ad-threat-detection/serve
+Environment=ADSERVE_BUNDLE_DIR=/opt/ad-threat-detection/serve/serve_bundle
+Environment=ADSERVE_ALERTS_PATH=/var/ossec/logs/alerts/alerts.json
+Environment=ADSERVE_OUT_PATH=/var/ossec/logs/ml_anomalies.json
+Environment=ADSERVE_DEVICE=cpu
+ExecStart=/opt/ad-threat-detection/serve/.venv/bin/python -m adserve.service
+Restart=on-failure
+RestartSec=5
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/ossec/logs
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
