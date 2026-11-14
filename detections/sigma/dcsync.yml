@@ -1,0 +1,27 @@
+title: DCSync - Directory Replication Rights Exercised
+id: de4426d0-7abf-4fed-84a0-e47c5c48604a
+status: experimental
+description: Detects use of directory replication rights (Event 4662 with the DS-Replication-Get-Changes GUIDs), the signature of a DCSync credential-dumping attack. Requires a SACL on the domain root object.
+references:
+    - https://attack.mitre.org/techniques/T1003/006/
+author: AJ (UFCE8A-30-3 Cyber Security Project)
+date: 2026/11/14
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4662
+        Properties|contains:
+            - '1131f6aa-9c07-11d1-f79f-00c04fc2dcd2'   # DS-Replication-Get-Changes
+            - '1131f6ad-9c07-11d1-f79f-00c04fc2dcd2'   # DS-Replication-Get-Changes-All
+    filter:
+        SubjectUserName|endswith: '$'                  # exclude machine/DC accounts
+    condition: selection and not filter
+falsepositives:
+    - Legitimate domain controller replication (filtered by excluding machine accounts)
+    - Azure AD Connect / backup service accounts (allowlist these)
+level: critical
+tags:
+    - attack.credential_access
+    - attack.t1003.006

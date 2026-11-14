@@ -1,0 +1,49 @@
+<!-- Custom Wazuh detection rules for AD identity attacks (UFCE8A-30-3).
+     Core-4 detections, confirmed against real captured telemetry via wazuh-logtest. -->
+<group name="ad_identity_attacks,">
+
+  <rule id="100510" level="10">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^4768$</field>
+    <field name="win.eventdata.preAuthType">^0$</field>
+    <description>AS-REP Roasting: TGT issued without pre-authentication for $(win.eventdata.targetUserName)</description>
+    <mitre><id>T1558.004</id></mitre>
+  </rule>
+
+  <rule id="100511" level="10">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^4769$</field>
+    <field name="win.eventdata.ticketEncryptionType">^0x17$</field>
+    <description>Kerberoasting: RC4 service ticket requested for $(win.eventdata.serviceName)</description>
+    <mitre><id>T1558.003</id></mitre>
+  </rule>
+
+  <rule id="100512" level="12" frequency="3" timeframe="60">
+    <if_matched_sid>100511</if_matched_sid>
+    <description>Kerberoasting: multiple RC4 service ticket requests in a short window</description>
+    <mitre><id>T1558.003</id></mitre>
+  </rule>
+
+  <rule id="100513" level="5">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^4625$</field>
+    <description>AD telemetry: user authentication failed (base rule for spraying)</description>
+  </rule>
+
+  <rule id="100515" level="11" frequency="8" timeframe="120">
+    <if_matched_sid>100513</if_matched_sid>
+    <same_source_ip />
+    <different_field>win.eventdata.targetUserName</different_field>
+    <description>Password Spraying: multiple distinct account failures from one source in 2 minutes</description>
+    <mitre><id>T1110.003</id></mitre>
+  </rule>
+
+  <rule id="100514" level="13">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^4662$</field>
+    <field name="win.eventdata.properties">1131f6aa-9c07-11d1-f79f-00c04fc2dcd2</field>
+    <description>DCSync: directory replication rights used by $(win.eventdata.subjectUserName)</description>
+    <mitre><id>T1003.006</id></mitre>
+  </rule>
+
+</group>

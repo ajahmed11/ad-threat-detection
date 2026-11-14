@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install xmllint
+        run: sudo apt-get update && sudo apt-get install -y libxml2-utils
+
+      - name: Validate Wazuh rules XML
+        run: xmllint --noout detections/wazuh/local_rules.xml
+
+      - name: Install Python deps
+        run: pip install -r requirements.txt pytest
+
+      - name: Compile-check all Python (no torch needed)
+        run: python -m py_compile pipeline/*.py models/*.py models/admodel/*.py
+
+      - name: Run test suite (detections + leakage-free pipeline)
+        run: python -m pytest tests/ -q

@@ -1,0 +1,17 @@
+<!-- Add inside the <ossec_config> of the WAZUH MANAGER's /var/ossec/etc/ossec.conf -->
+
+<!-- 1. Declare the command (the executable deployed on the agent) -->
+<command>
+  <name>disable-ad-account</name>
+  <executable>disable-ad-account.cmd</executable>
+  <timeout_allowed>no</timeout_allowed>
+</command>
+
+<!-- 2. Bind it to the detection rules. location "local" runs it on the agent
+        (DC01) that produced the alert, which is where the AD cmdlets live.
+        Start with DCSync (100514) for the cleanest demo; add the others when ready. -->
+<active-response>
+  <command>disable-ad-account</command>
+  <location>local</location>
+  <rules_id>100514,100510,100511,100515</rules_id>
+</active-response>

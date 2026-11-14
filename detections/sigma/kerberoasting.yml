@@ -1,0 +1,24 @@
+title: Kerberoasting - RC4 Service Ticket Requested
+id: 4fd2032b-9131-4294-95a8-06c2664f22d5
+status: experimental
+description: Detects a Kerberos service ticket (Event 4769) requested with RC4 encryption (0x17), the signature of Kerberoasting against an account with an SPN.
+references:
+    - https://attack.mitre.org/techniques/T1558/003/
+author: AJ (UFCE8A-30-3 Cyber Security Project)
+date: 2026/11/14
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4769
+        TicketEncryptionType: '0x17'
+    filter:
+        ServiceName|endswith: '$'
+    condition: selection and not filter
+falsepositives:
+    - Legacy services still negotiating RC4 (tune per environment)
+level: high
+tags:
+    - attack.credential_access
+    - attack.t1558.003

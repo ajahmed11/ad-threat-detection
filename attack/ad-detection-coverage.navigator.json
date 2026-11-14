@@ -1,0 +1,127 @@
+{
+  "name": "AD Identity Attack Detection Coverage \u2014 UFCE8A-30-3",
+  "versions": {
+    "attack": "14",
+    "navigator": "4.9.1",
+    "layer": "4.5"
+  },
+  "domain": "enterprise-attack",
+  "description": "Detection coverage of custom Wazuh rules for AD identity attacks. Colour = verified recall; grey = attempted but not detected. Source: UFCE8A-30-3 Cyber Security Project.",
+  "techniques": [
+    {
+      "techniqueID": "T1558.004",
+      "score": 64,
+      "comment": "Wazuh rule 100510 (4768, preAuthType=0). Recall 64%, precision 100%.",
+      "enabled": true,
+      "metadata": [
+        {
+          "name": "technique",
+          "value": "AS-REP Roasting"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1558.003",
+      "score": 88,
+      "comment": "Wazuh rules 100511/100512 (4769, RC4 0x17). Recall 88%, precision 100% \u2014 strongest detection.",
+      "enabled": true,
+      "metadata": [
+        {
+          "name": "technique",
+          "value": "Kerberoasting"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1110.003",
+      "score": 45,
+      "comment": "Wazuh rule 100515 (4625 frequency). Recall 45%; noisiest rule.",
+      "enabled": true,
+      "metadata": [
+        {
+          "name": "technique",
+          "value": "Password Spraying"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1003.006",
+      "score": 62,
+      "comment": "Wazuh rule 100514 (4662 replication GUIDs). Recall 62%. Active Response auto-disables the account.",
+      "enabled": true,
+      "metadata": [
+        {
+          "name": "technique",
+          "value": "DCSync"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1078.002",
+      "score": 60,
+      "comment": "Rule 100524 (4741/4742). Telemetry captured; sAMAccountName rename blocked by patch.",
+      "enabled": true,
+      "metadata": [
+        {
+          "name": "technique",
+          "value": "Domain Accounts (noPac CVE-2021-42278/42287)"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1187",
+      "score": 20,
+      "comment": "Rule 100526 (5145). Coercion succeeds; SIEM detection unreliable (telemetry-forwarding gap).",
+      "enabled": true,
+      "metadata": [
+        {
+          "name": "technique",
+          "value": "Forced Authentication (PetitPotam CVE-2021-36942)"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1068",
+      "score": 0,
+      "comment": "Blocked by patches on the current DC; attempt generated no actionable telemetry.",
+      "enabled": true,
+      "metadata": [
+        {
+          "name": "technique",
+          "value": "Exploitation for Privilege Escalation (PrintNightmare / Zerologon)"
+        }
+      ]
+    }
+  ],
+  "gradient": {
+    "colors": [
+      "#ff6b6b",
+      "#ffd966",
+      "#8ec843"
+    ],
+    "minValue": 0,
+    "maxValue": 100
+  },
+  "legendItems": [
+    {
+      "label": "strong detection (>80%)",
+      "color": "#8ec843"
+    },
+    {
+      "label": "partial (40-80%)",
+      "color": "#ffd966"
+    },
+    {
+      "label": "weak / not detected (<40%)",
+      "color": "#ff6b6b"
+    }
+  ],
+  "showTacticRowBackground": true,
+  "tacticRowBackground": "#205b8f",
+  "selectTechniquesAcrossTactics": true,
+  "sorting": 0,
+  "layout": {
+    "layout": "side"
+  },
+  "hideDisabled": false
+}

@@ -1,0 +1,22 @@
+title: AS-REP Roasting - Kerberos Pre-Authentication Disabled
+id: 68a03f2b-0eda-48d4-8e08-ca28389718bc
+status: experimental
+description: Detects a Kerberos TGT (Event 4768) issued for an account that does not require pre-authentication, the signature of AS-REP roasting.
+references:
+    - https://attack.mitre.org/techniques/T1558/004/
+author: AJ (UFCE8A-30-3 Cyber Security Project)
+date: 2026/11/14
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4768
+        PreAuthType: '0'
+    condition: selection
+falsepositives:
+    - Legacy accounts legitimately configured without pre-authentication (rare)
+level: high
+tags:
+    - attack.credential_access
+    - attack.t1558.004
