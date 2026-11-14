@@ -1,6 +1,6 @@
 # Active Directory Identity-Attack Detection — Rules vs Deep Learning
 
-![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/ajahmed11/ad-threat-detection/actions/workflows/ci.yml/badge.svg)
 
 A controlled, reproducible study comparing **custom Wazuh SIEM rules** with **LSTM, BiLSTM
 and LogBERT** sequence models for detecting Active Directory identity attacks — with
@@ -72,7 +72,7 @@ cd ../pipeline && python score_rules_windows.py
 ```bash
 git init && git add . && git commit -m "AD identity-attack detection: rules vs deep learning"
 git branch -M main
-git remote add origin https://github.com/OWNER/REPO.git
+git remote add origin https://github.com/ajahmed11/ad-threat-detection.git
 git push -u origin main
 ```
 CI runs automatically on push (free for public repos). Replace `USER` in the badge URL above.
