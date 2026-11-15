@@ -1,9 +1,9 @@
-# Active Directory Identity-Attack Detection â€” Rules vs Deep Learning
+# Active Directory Identity-Attack Detection — Rules vs Deep Learning
 
 [![CI](https://github.com/ajahmed11/ad-threat-detection/actions/workflows/ci.yml/badge.svg)](https://github.com/ajahmed11/ad-threat-detection/actions/workflows/ci.yml)
 
 A controlled, reproducible study comparing **custom Wazuh SIEM rules** with **LSTM, BiLSTM
-and LogBERT** sequence models for detecting Active Directory identity attacks â€” with
+and LogBERT** sequence models for detecting Active Directory identity attacks — with
 **ATT&CK-mapped, detection-as-code** rules and **automated response**.
 
 > Level 6 Cyber Security Project (UFCE8A-30-3, UWE Bristol). CyBOK: SOIM (primary), AAA (secondary).
@@ -12,12 +12,12 @@ and LogBERT** sequence models for detecting Active Directory identity attacks â
 
 Custom rules decisively outperform unsupervised deep sequence models for identity attacks
 whose signature is a single field value; the models only reliably detect multi-event
-(burst) attacks such as DCSync. This is a nuanced, reproducible finding â€” not "deep learning
-wins" â€” backed by a leakage-free dataset and per-attack analysis.
+(burst) attacks such as DCSync. This is a nuanced, reproducible finding — not "deep learning
+wins" — backed by a leakage-free dataset and per-attack analysis.
 
 | Detector | F1 | Recall | FPR | ROC-AUC |
 | --- | --- | --- | --- | --- |
-| Custom Wazuh rules | â€” | 45â€“88% (per attack) | low | â€” |
+| Custom Wazuh rules | — | 45–88% (per attack) | low | — |
 | LogBERT (best model) | 0.27 | 0.36 | 0.10 | 0.64 |
 | LSTM | 0.23 | 0.33 | 0.12 | 0.65 |
 | BiLSTM | 0.21 | 0.38 | 0.17 | 0.63 |
@@ -31,7 +31,7 @@ detections/
   wazuh/local_rules.xml      # custom Wazuh rules (ATT&CK-tagged)
   sigma/*.yml                # same detections as portable Sigma (detection-as-code)
 attack/                      # MITRE ATT&CK Navigator coverage layer
-response/                    # Wazuh Active Response â€” auto-disable the abused AD account
+response/                    # Wazuh Active Response — auto-disable the abused AD account
 pipeline/                    # parse -> label (leak-free) -> split -> window
 models/                      # LSTM / BiLSTM / LogBERT (anomaly + supervised) + live dashboard
 tests/                       # CI: detection validity + leakage-free pipeline
@@ -61,7 +61,7 @@ cd ../pipeline && python score_rules_windows.py
 
 - **Leakage-free split**: whole attack runs assigned to one split; vocabulary built from
   training data only; thresholds chosen on validation; the test set is scored once.
-- **Honest metrics**: precision / recall / F1 / FPR / ROC-AUC / PR-AUC, mean Â± std over 3
+- **Honest metrics**: precision / recall / F1 / FPR / ROC-AUC / PR-AUC, mean ± std over 3
   seeds, per attack type, with inference latency.
 - **Frozen dataset**: the run manifest and dataset hashes are recorded for reproducibility; the raw Wazuh archives and the built `windows.npz` are **not stored in Git** (see `docs/REPRODUCING.md` for how to obtain/rebuild them).
 - **Detection-as-code**: rules are ATT&CK-tagged and mirrored in Sigma; CI validates them.
