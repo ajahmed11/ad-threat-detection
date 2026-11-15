@@ -3,8 +3,9 @@
 Turns the offline sequence models (LSTM / BiLSTM / LogBERT) into a **real-time
 detector**. It tails the Wazuh alert stream, keeps a sliding window of log keys
 per host, scores each window with the same **max-surprisal** logic used in
-`admodel/evaluate.py`, and emits anomalies as JSON that Wazuh re-ingests to
-drive the existing `Disable-ADAccount` Active Response.
+`admodel/evaluate.py`, and emits anomalies as JSON that Wazuh re-ingests as **analyst alerts**.
+The service is **advisory only**: anomaly records carry no account fields and are
+deliberately *not* wired to `Disable-ADAccount`.
 
 This is the proposal's *"secondary integration"* delivered as a deployable
 service, not a design.
@@ -13,7 +14,7 @@ service, not a design.
  Wazuh alerts.json ──tail──▶ featurize ──▶ per-host window ──▶ model (max-surprisal)
                                                                     │ score ≥ threshold
                                                                     ▼
- Active Response ◀── rule 100701 ◀── <localfile> ◀── ml_anomalies.json ◀── emit
+ Analyst alert ◀── rule 100700/100701 ◀── <localfile> ◀── ml_anomalies.json ◀── emit
 ```
 
 ## Faithful to the research — verified
@@ -52,10 +53,15 @@ python make_bundle.py bilstm
 ```
 
 It writes `serve_bundle/` containing:
-- `model.pt` — the whole trained BiLSTM module
+- `model.pt` — the trained weights as a **state_dict** (tensors only; loaded with `weights_only=True`)
 - `vocab.json` — the frozen training vocabulary
-- `meta.json` — threshold, window size, mask id, the featurizer key spec, and
-  `admodel_path` (so the service can unpickle the module)
+- `meta.json` — architecture *name* (looked up in a fixed registry), threshold, window
+  size, mask id and the featurizer key spec. It cannot name modules or paths.
+
+**Integrity:** `make_bundle.py` prints the SHA-256 of `model.pt`. Store it separately from
+the bundle and run the service with `ADSERVE_MODEL_SHA256=<hash>` (or `--expect-sha256`).
+`admodel` must be importable via a fixed `PYTHONPATH`/install (the systemd unit sets it);
+the bundle can no longer alter `sys.path`.
 
 Swap `bilstm` for `lstm` or `logbert` to bundle a different model. (LogBERT is
 served on masked-surprisal only; its hypersphere term is not applied live.)

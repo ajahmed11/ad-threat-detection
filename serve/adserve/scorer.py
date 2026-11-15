@@ -5,18 +5,60 @@ read the model's log-probability for the token that was really there, and take
 the single most surprising position as the window score. A window is anomalous
 when its score crosses the threshold frozen at training time.
 
-The model architecture is NOT re-implemented here. export_bundle.py pickles
-the already-constructed module (admodel.models.MaskedRNN / LogBERT) into
-model.pt, so the service stays in lock-step with whatever was trained.
+SECURITY MODEL (see docs/SECURITY_REVIEW_FIXES.md)
+  * The bundle holds DATA only: a tensor state_dict (model.pt), vocab.json and
+    meta.json. It is loaded with torch.load(weights_only=True), so no pickled
+    Python object / code is ever executed.
+  * The architecture is chosen from a FIXED registry in this file. meta.json can
+    only select a name from that registry; it cannot name a module or a path.
+  * sys.path is never modified. `admodel` must be importable as an installed /
+    PYTHONPATH-configured dependency (set by the systemd unit, not by the bundle).
+  * model.pt is verified against a SHA-256 that must come from OUTSIDE the bundle
+    (env ADSERVE_MODEL_SHA256 / --expect-sha256). A hash stored beside the file
+    protects against nothing, so meta.json's copy is informational only.
 """
 from __future__ import annotations
 
+import hashlib
 import json
+import logging
 from pathlib import Path
+from typing import Callable
 
 import torch
+import torch.nn as nn
 
 from .featurize import Vocab
+
+log = logging.getLogger("adserve.scorer")
+
+# name -> factory(vocab_size) -> nn.Module.  Trusted application code only.
+ARCH_REGISTRY: dict[str, Callable[[int], nn.Module]] = {}
+
+
+def register_arch(name: str, factory: Callable[[int], nn.Module]) -> None:
+    """Register a model architecture in code (never from bundle data)."""
+    ARCH_REGISTRY[name] = factory
+
+
+def _register_admodel() -> None:
+    try:
+        from admodel import models as _m   # fixed import; location is deployment config
+    except ImportError:                     # service can still run with test archs
+        return
+    for n in ("lstm", "bilstm", "logbert"):
+        register_arch(n, lambda vs, _n=n: _m.build(_n, vs))
+
+
+_register_admodel()
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 class ModelBundle:
@@ -31,18 +73,36 @@ class ModelBundle:
         self.mask_id = int(meta.get("mask_id", len(vocab)))
 
     @classmethod
-    def load(cls, bundle_dir: Path, device: str = "cpu") -> "ModelBundle":
-        import sys
+    def load(cls, bundle_dir: Path, device: str = "cpu",
+             expected_sha256: str | None = None) -> "ModelBundle":
         bundle_dir = Path(bundle_dir)
+        weights = bundle_dir / "model.pt"
         meta = json.loads((bundle_dir / "meta.json").read_text())
         vocab = Vocab(json.loads((bundle_dir / "vocab.json").read_text()))
-        # The pickled module references admodel.models.{MaskedRNN,LogBERT}; make
-        # that package importable. meta records where it lives at build time.
-        ap = meta.get("admodel_path")
-        if ap and ap not in sys.path:
-            sys.path.insert(0, ap)
-        # weights_only=False: the bundle is a trusted artifact we produced.
-        model = torch.load(bundle_dir / "model.pt", map_location=device, weights_only=False)
+
+        actual = sha256_file(weights)
+        if expected_sha256:
+            if actual.lower() != expected_sha256.strip().lower():
+                raise RuntimeError(
+                    f"model.pt SHA-256 mismatch: expected {expected_sha256}, got {actual}")
+            log.info("model.pt SHA-256 verified against trusted value")
+        else:
+            log.warning("no trusted SHA-256 supplied (ADSERVE_MODEL_SHA256); model.pt=%s "
+                        "- integrity NOT verified", actual)
+
+        arch = meta.get("arch") or meta.get("model")
+        if arch not in ARCH_REGISTRY:
+            raise RuntimeError(
+                f"unknown architecture {arch!r}; allowed: {sorted(ARCH_REGISTRY)}. "
+                "Is the 'admodel' package importable (PYTHONPATH / pip install)?")
+        vocab_size = int(meta.get("vocab_size", len(vocab)))
+        model = ARCH_REGISTRY[arch](vocab_size)
+
+        # weights_only=True: tensors only, no arbitrary object deserialisation.
+        state = torch.load(weights, map_location=device, weights_only=True)
+        if not isinstance(state, dict):
+            raise RuntimeError("model.pt must be a state_dict (re-export with make_bundle.py)")
+        model.load_state_dict(state)           # strict: shape/key mismatch fails loudly
         return cls(model, vocab, meta, device=device)
 
     def _logits(self, batch: torch.Tensor) -> torch.Tensor:

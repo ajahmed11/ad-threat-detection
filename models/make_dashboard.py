@@ -194,9 +194,17 @@ window.addEventListener('resize',drawAll);
 drawAll();
 </script></body></html>"""
 
+def _safe_json(obj) -> str:
+    """JSON for embedding inside <script>: neutralise sequences that could close
+    the tag or break out of the script context."""
+    return (json.dumps(obj)
+            .replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+            .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
+
+
 def main():
     data = collect()
-    html = (HTML.replace("__DATA__", json.dumps(data))
+    html = (HTML.replace("__DATA__", _safe_json(data))
                 .replace("__TESTN__", str(data["test_n"]))
                 .replace("__ATTACKN__", str(data["attack_n"])))
     open("dashboard.html","w",encoding="utf-8").write(html)

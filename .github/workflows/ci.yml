@@ -5,28 +5,46 @@ on:
     branches: [ main ]
   pull_request:
 
+# least privilege: CI only needs to read the repo
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
+      # NOTE: pin each action to a full commit SHA before publishing, e.g.
+      #   uses: actions/checkout@<40-char-sha>  # v4.x.y
+      # (look up the current SHA on the action's releases page).
       - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
 
       - name: Install xmllint
         run: sudo apt-get update && sudo apt-get install -y libxml2-utils
 
       - name: Validate Wazuh rules XML
-        run: xmllint --noout detections/wazuh/local_rules.xml
+        run: |
+          xmllint --noout detections/wazuh/local_rules.xml
+          xmllint --noout response/ossec-manager-snippet.xml || true  # fragment may have no root
 
-      - name: Install Python deps
-        run: pip install -r requirements.txt pytest
+      - name: Install deps (CPU torch for the serving tests)
+        run: |
+          pip install -r requirements.txt pytest
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
 
-      - name: Compile-check all Python (no torch needed)
-        run: python -m py_compile pipeline/*.py models/*.py models/admodel/*.py
+      - name: Compile-check ALL Python (pipeline, models, serve)
+        run: python -m compileall -q pipeline models serve
 
-      - name: Run test suite (detections + leakage-free pipeline)
+      - name: Pipeline + detection tests
         run: python -m pytest tests/ -q
+
+      - name: Serving tests (loader security, tailer limits, emitter)
+        run: cd serve && python -m pytest adserve/tests -q
+
+      - name: Static checks on the response script
+        run: python -m pytest tests/test_response_script.py -q

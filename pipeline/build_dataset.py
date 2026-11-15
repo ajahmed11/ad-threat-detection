@@ -111,7 +111,7 @@ def build_windows(df_split, key2id):
                 meta.append((host, int(times[st]), int(times[st + W - 1])))
     return (np.array(X, dtype=np.int64),
             np.array(y, dtype=np.int64),
-            np.array(atk, dtype=object), meta)
+            np.array(atk, dtype=str), meta)   # str, not object: loadable with allow_pickle=False
 
 
 def main():

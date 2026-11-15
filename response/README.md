@@ -1,8 +1,8 @@
 # Wazuh Active Response — automated AD account containment
 
 Closes the **"and Response"** half of the project title: when a detection rule fires,
-Wazuh automatically runs `Disable-ADAccount` on DC01 to lock out the abused account.
-This is a SOAR-style containment action — exactly what a real SOC does.
+Wazuh can run `Disable-ADAccount` on DC01 for a **validated DCSync detection (rule 100514)**.
+All other detections are alert-only. Containment is **dry-run by default**.
 
 ## Files
 - `disable-ad-account.ps1` — the response script (reads the alert, disables the account, logs it).
@@ -50,11 +50,20 @@ the compromised account without any analyst action."*
 Enable-ADAccount -Identity adm.rthapa
 ```
 
-## Notes / safety
-- The script refuses to disable protected accounts (Administrator, krbtgt, Guest, DC01$).
+## Safety model (after the security review)
+- **Dry-run by default.** Real disabling happens only if
+  `C:\Program Files (x86)\ossec-agent\active-response\enforce.flag` exists. For the demo:
+  `New-Item "...\active-response\enforce.flag" -ItemType File`; delete it to go back to dry-run.
+- **Rule allow-list inside the script** (only 100514 acts); the manager XML binds only 100514 too.
+- **Strict identity validation**: SAM-name regex, machine accounts (`$`) rejected *before* any
+  normalisation, account resolved to exactly **one** AD user, then acted on by ObjectGUID.
+- **Protected identities**: RID < 1000 (Administrator/Guest/krbtgt), `adminCount=1`, and recursive
+  membership of Domain/Enterprise/Schema Admins, Administrators and operator groups are all refused.
+- Spraying / AS-REP / Kerberoasting never auto-disable: they do not identify one compromised account.
+
+## Notes
+- The older line below that says the script protects only a fixed name list is superseded by the above.
 - It writes an Application event (ID 9100) on each action, so the **response itself is auditable**
   and shows up in Wazuh — a nice closing-the-loop detail for the demo.
-- Start scoped to rule 100514 (DCSync) for the cleanest story; the snippet also lists
-  100510/100511/100515 — enable those once you've rehearsed the main flow.
 - For spraying (100515) there is no single abusing account; prefer IP-based blocking there,
   or leave it out of Active Response and mention that distinction in the viva (shows judgement).

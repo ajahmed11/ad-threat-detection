@@ -8,7 +8,7 @@ from . import config
 
 
 def load_dataset():
-    d = np.load(config.WINDOWS_NPZ, allow_pickle=True)
+    d = np.load(config.WINDOWS_NPZ, allow_pickle=False)
     vocab = json.loads(config.VOCAB_JSON.read_text())
     out = {k: d[k] for k in d.files}
     out["vocab"] = vocab

@@ -6,8 +6,13 @@ from pathlib import Path
 import torch
 
 # --- paths: point at the dataset the adpipe pipeline produced ---------------
-# Default assumes admodel sits next to adpipe. Edit if your layout differs.
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "adpipe" / "data" / "processed"
+# Resolution order: $ADMODEL_DATA_DIR, then <repo>/data/processed (this repo's layout),
+# then the legacy lab layout (admodel next to adpipe). See docs/REPRODUCING.md.
+import os as _os
+_repo = Path(__file__).resolve().parent.parent.parent
+_legacy = _repo / "adpipe" / "data" / "processed"
+DATA_DIR = (Path(_os.environ["ADMODEL_DATA_DIR"]) if "ADMODEL_DATA_DIR" in _os.environ
+            else (_repo / "data" / "processed" if (_repo / "data" / "processed").exists() else _legacy))
 WINDOWS_NPZ = DATA_DIR / "windows.npz"
 VOCAB_JSON  = DATA_DIR / "vocab.json"
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"

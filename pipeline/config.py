@@ -2,16 +2,15 @@
 Central configuration for the AD identity-attack ML dataset pipeline.
 Every path and experiment parameter lives here so the dissertation can cite exact values.
 
-EDIT ONLY THE `RAW_DIR` LINE BELOW to point at your VMware shared folder as it is
-mounted on the laptop (Windows). Everything else is derived from it.
+Set the raw-data location with the environment variable ADPIPE_RAW_DIR (no source
+edits needed), e.g.   $env:ADPIPE_RAW_DIR = "D:\\Final_Year\\CSP\\raw"   (PowerShell)
+or   export ADPIPE_RAW_DIR=/data/raw   (bash). The raw archives are NOT in git; see
+docs/REPRODUCING.md for how to obtain them.
 """
+import os
 from pathlib import Path
 
-# ======================================================================
-# EDIT THIS ONE LINE: where the shared folder /mnt/hgfs/raw appears on the laptop.
-# Examples:  r"Z:\raw"   or   r"\\vmware-host\Shared Folders\raw"
-RAW_DIR = Path("/home/claude/adpipe/testraw")
-# ======================================================================
+RAW_DIR = Path(os.environ.get("ADPIPE_RAW_DIR", "./raw")).expanduser()
 
 OUT_DIR = Path(__file__).resolve().parent.parent / "data" / "processed"
 OUT_DIR.mkdir(parents=True, exist_ok=True)

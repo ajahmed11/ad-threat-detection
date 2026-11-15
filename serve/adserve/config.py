@@ -22,6 +22,9 @@ class ServeConfig:
     # Directory holding model.pt + meta.json + vocab.json.
     bundle_dir: Path = field(default_factory=lambda: Path(_env("BUNDLE_DIR", "serve_bundle")))
 
+    # Trusted SHA-256 of model.pt, supplied OUT-OF-BAND (env/CLI), never from the bundle.
+    model_sha256: str = field(default_factory=lambda: str(_env("MODEL_SHA256", "")))
+
     # --- Input: the Wazuh alert stream (JSON-lines) ------------------------
     # alerts.json is written one JSON object per line by the Wazuh manager.
     alerts_path: Path = field(default_factory=lambda: Path(_env("ALERTS_PATH", "/var/ossec/logs/alerts/alerts.json")))
@@ -51,6 +54,11 @@ class ServeConfig:
     idle_evict_s: float = float(_env("IDLE_EVICT_S", "900"))
     poll_interval_s: float = float(_env("POLL_INTERVAL_S", "0.5"))
     log_level: str = str(_env("LOG_LEVEL", "INFO"))
+    # Resource ceilings (a hostile/garbled log must not exhaust memory).
+    max_line_bytes: int = int(_env("MAX_LINE_BYTES", str(1 << 20)))   # 1 MiB per JSON line
+    max_hosts: int = int(_env("MAX_HOSTS", "512"))
+    out_max_bytes: int = int(_env("OUT_MAX_BYTES", str(50 << 20)))    # rotate anomalies file at 50 MiB
+    out_backups: int = int(_env("OUT_BACKUPS", "5"))
 
     def resolved_threshold(self, meta: dict) -> float:
         """CLI/env threshold wins; otherwise the value frozen at train time."""

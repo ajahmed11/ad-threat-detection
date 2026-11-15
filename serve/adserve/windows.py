@@ -18,15 +18,19 @@ class _HostState:
 
 
 class WindowStore:
-    def __init__(self, window_size: int, idle_evict_s: float):
+    def __init__(self, window_size: int, idle_evict_s: float, max_hosts: int = 512):
         self.window_size = int(window_size)
         self.idle_evict_s = float(idle_evict_s)
+        self.max_hosts = int(max_hosts)     # hard cap: hostile agent names cannot grow memory
         self._hosts: dict[str, _HostState] = {}
 
     def push(self, host: str, token_id: int) -> list[int] | None:
         """Add one token for `host`. Return the full window if one is ready."""
         st = self._hosts.get(host)
         if st is None:
+            if len(self._hosts) >= self.max_hosts:      # evict least-recently-seen
+                oldest = min(self._hosts, key=lambda h: self._hosts[h].last_seen)
+                del self._hosts[oldest]
             st = _HostState(buf=deque(maxlen=self.window_size))
             self._hosts[host] = st
         st.buf.append(token_id)

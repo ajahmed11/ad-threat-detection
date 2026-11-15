@@ -24,8 +24,12 @@
     <mitre><id>T1558.003</id></mitre>
   </rule>
 
+  <!-- Parent: Windows Security events. 60103 (audit success), 60104 (audit failure) and
+       60105 (logon failure) are all listed because the upstream classification of 4625
+       differs between Wazuh versions; the eventID field match below is what scopes it.
+       VERIFY with wazuh-logtest (see docs/SECURITY_REVIEW_FIXES.md) before relying on it. -->
   <rule id="100513" level="5">
-    <if_sid>60103</if_sid>
+    <if_sid>60103,60104,60105</if_sid>
     <field name="win.system.eventID">^4625$</field>
     <description>AD telemetry: user authentication failed (base rule for spraying)</description>
   </rule>
@@ -42,6 +46,8 @@
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4662$</field>
     <field name="win.eventdata.properties">1131f6aa-9c07-11d1-f79f-00c04fc2dcd2</field>
+    <!-- Ignore machine accounts (DC-to-DC replication). Real DCSync uses a user/service account. -->
+    <field name="win.eventdata.subjectUserName" negate="yes">\$$</field>
     <description>DCSync: directory replication rights used by $(win.eventdata.subjectUserName)</description>
     <mitre><id>T1003.006</id></mitre>
   </rule>

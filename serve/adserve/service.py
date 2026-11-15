@@ -37,6 +37,7 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--threshold", type=float, help="override decision threshold")
     p.add_argument("--window-size", type=int, help="override window length")
     p.add_argument("--device", help="cpu or cuda")
+    p.add_argument("--expect-sha256", help="trusted SHA-256 of model.pt (overrides ADSERVE_MODEL_SHA256)")
     p.add_argument("--log-key-field", help="dotted path to the log key")
     p.add_argument("--host-field", help="dotted path to the host id")
     p.add_argument("--from-start", action="store_true", help="follow from BOF, not EOF")
@@ -52,6 +53,7 @@ def cfg_from_args(args) -> ServeConfig:
     if args.threshold is not None:   c.threshold = args.threshold
     if args.window_size:   c.window_size = args.window_size
     if args.device:        c.device = args.device
+    if args.expect_sha256: c.model_sha256 = args.expect_sha256
     if args.log_key_field: c.log_key_field = args.log_key_field
     if args.host_field:    c.host_field = args.host_field
     if args.log_level:     c.log_level = args.log_level
@@ -64,7 +66,8 @@ def run(cfg: ServeConfig, *, replay_path: Path | None = None, from_start: bool =
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
 
-    bundle = ModelBundle.load(cfg.bundle_dir, device=cfg.device)
+    bundle = ModelBundle.load(cfg.bundle_dir, device=cfg.device,
+                              expected_sha256=cfg.model_sha256 or None)
     if not math.isnan(cfg.threshold):
         threshold = cfg.threshold
     else:
@@ -75,18 +78,19 @@ def run(cfg: ServeConfig, *, replay_path: Path | None = None, from_start: bool =
     # The featurizer's composite-key spec comes from the bundle, so the live
     # log key matches the training definition exactly.
     featurizer = Featurizer.from_meta(bundle.vocab, bundle.meta)
-    store = WindowStore(window_size, cfg.idle_evict_s)
-    emitter = AnomalyEmitter(cfg.out_path)
+    store = WindowStore(window_size, cfg.idle_evict_s, max_hosts=cfg.max_hosts)
+    emitter = AnomalyEmitter(cfg.out_path, max_bytes=cfg.out_max_bytes, backups=cfg.out_backups)
 
     log.info("loaded %s | vocab=%d window=%d threshold=%.3f key_fields=%s device=%s",
              model_name, len(bundle.vocab), window_size, threshold,
              "|".join(featurizer.key_fields), cfg.device)
 
     if replay_path is not None:
-        source = replay(replay_path)
+        source = replay(replay_path, max_line_bytes=cfg.max_line_bytes)
         log.info("REPLAY %s", replay_path)
     else:
-        source = follow(cfg.alerts_path, cfg.poll_interval_s, from_start=from_start)
+        source = follow(cfg.alerts_path, cfg.poll_interval_s, from_start=from_start,
+                        max_line_bytes=cfg.max_line_bytes)
         log.info("FOLLOW %s", cfg.alerts_path)
 
     _install_signal_handlers()

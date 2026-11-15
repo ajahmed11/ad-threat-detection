@@ -1,6 +1,6 @@
 # Active Directory Identity-Attack Detection — Rules vs Deep Learning
 
-![CI](https://github.com/ajahmed11/ad-threat-detection/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/USER/ad-threat-detection/actions/workflows/ci.yml/badge.svg)
 
 A controlled, reproducible study comparing **custom Wazuh SIEM rules** with **LSTM, BiLSTM
 and LogBERT** sequence models for detecting Active Directory identity attacks — with
@@ -63,16 +63,16 @@ cd ../pipeline && python score_rules_windows.py
   training data only; thresholds chosen on validation; the test set is scored once.
 - **Honest metrics**: precision / recall / F1 / FPR / ROC-AUC / PR-AUC, mean ± std over 3
   seeds, per attack type, with inference latency.
-- **Frozen dataset**: the exact runs behind the results are version-controlled.
+- **Frozen dataset**: the run manifest and dataset hashes are recorded for reproducibility; the raw Wazuh archives and the built `windows.npz` are **not stored in Git** (see `docs/REPRODUCING.md` for how to obtain/rebuild them).
 - **Detection-as-code**: rules are ATT&CK-tagged and mirrored in Sigma; CI validates them.
-- **Response**: a Wazuh Active Response disables the abused account automatically (SOAR-style).
+- **Response**: a *guarded* Wazuh Active Response (DCSync only, non-privileged user accounts only, dry-run by default). All other detections and the ML service are **alert-only / advisory** - see `response/README.md` and `docs/SECURITY_REVIEW_FIXES.md`.
 
 ## Deploy to GitHub
 
 ```bash
 git init && git add . && git commit -m "AD identity-attack detection: rules vs deep learning"
 git branch -M main
-git remote add origin https://github.com/ajahmed11/ad-threat-detection.git
+git remote add origin https://github.com/USER/ad-threat-detection.git
 git push -u origin main
 ```
 CI runs automatically on push (free for public repos). Replace `USER` in the badge URL above.

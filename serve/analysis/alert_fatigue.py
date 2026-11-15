@@ -108,7 +108,7 @@ def count_episodes(rows, thr):
 
 # ----------------------------------------------------------------------------
 def labelled_scores(bundle: ModelBundle, npz_path: Path):
-    d = np.load(npz_path, allow_pickle=True)
+    d = np.load(npz_path, allow_pickle=False)
     X, y = d["X_test"], d["y_test"].astype(int)
     scores = np.array([bundle.score([int(t) for t in w]) for w in X], dtype=np.float32)
     return scores, y

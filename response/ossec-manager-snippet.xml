@@ -7,11 +7,14 @@
   <timeout_allowed>no</timeout_allowed>
 </command>
 
-<!-- 2. Bind it to the detection rules. location "local" runs it on the agent
-        (DC01) that produced the alert, which is where the AD cmdlets live.
-        Start with DCSync (100514) for the cleanest demo; add the others when ready. -->
+<!-- 2. Bind it to ONE rule only: DCSync (100514). location "local" runs it on the
+        agent (DC01) that produced the alert, where the AD cmdlets live.
+        AS-REP (100510), Kerberoast (100511/100512) and spraying (100515) are
+        deliberately NOT bound: they do not identify a single compromised account,
+        so they stay alert-only until an analyst reviews them. The script also
+        enforces this allow-list itself, so editing this XML cannot widen it. -->
 <active-response>
   <command>disable-ad-account</command>
   <location>local</location>
-  <rules_id>100514,100510,100511,100515</rules_id>
+  <rules_id>100514</rules_id>
 </active-response>

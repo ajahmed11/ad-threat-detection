@@ -8,7 +8,7 @@ adpipe dataset exists), e.g.:
 
 It trains the chosen model on the benign windows (seed 0), picks the
 F1-optimal threshold on the validation set exactly as evaluate.py does, then
-writes serve_bundle/{model.pt, vocab.json, meta.json}. Point adserve at it:
+writes serve_bundle/{model.pt (state_dict), vocab.json, meta.json}. Point adserve at it:
 
     python -m adserve.service --bundle-dir serve_bundle --replay <alerts.json> --out anoms.json
 
@@ -18,6 +18,7 @@ part of the ML-ops story the live service tells.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import sys
@@ -63,18 +64,21 @@ def main() -> int:
           f"FPR={res['fpr']} threshold={thr:.4f}")
 
     model.eval()
-    torch.save(model, out / "model.pt")
+    # State dict only (tensors). adserve rebuilds the architecture from its own
+    # fixed registry and loads this with torch.load(weights_only=True) - no pickled
+    # Python objects, no code in the bundle.
+    torch.save(model.state_dict(), out / "model.pt")
     shutil.copyfile(config.VOCAB_JSON, out / "vocab.json")
+    digest = hashlib.sha256((out / "model.pt").read_bytes()).hexdigest()
 
-    # Where the admodel package lives, so adserve can unpickle the module.
-    admodel_root = str(Path(train.__file__).resolve().parent.parent)
     meta = {
         "model": name,
+        "arch": name,                     # must be a key of adserve.scorer.ARCH_REGISTRY
         "threshold": thr,
         "window_size": window_len,
         "mask_id": int(mask_id),
         "vocab_size": int(vs),
-        "admodel_path": admodel_root,
+        "sha256_informational": digest,   # NOT trusted: supply the real one out-of-band
         "featurizer": {
             "key_fields": KEY_FIELDS,
             "field_paths": FIELD_PATHS,
@@ -86,6 +90,9 @@ def main() -> int:
     (out / "meta.json").write_text(json.dumps(meta, indent=2))
     print(f"[bundle] wrote -> {out.resolve()}")
     print(f"[bundle] files: model.pt, vocab.json, meta.json")
+    print(f"[bundle] model.pt SHA-256 = {digest}")
+    print("[bundle] record that hash somewhere SEPARATE from the bundle and deploy with "
+          "ADSERVE_MODEL_SHA256=<hash> so the service can verify it.")
     if name == "logbert":
         print("[bundle] NOTE: the live scorer uses masked-surprisal only; the "
               "LogBERT hypersphere term is not applied at serve time.")

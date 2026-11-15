@@ -13,7 +13,7 @@ import torch.nn as nn
 
 from adserve.config import ServeConfig
 from adserve.featurize import Featurizer, Vocab, status_class
-from adserve.scorer import ModelBundle
+from adserve.scorer import ARCH_REGISTRY, ModelBundle, register_arch, sha256_file
 from adserve.service import run
 from adserve.tailer import iter_json_lines
 from adserve.windows import WindowStore
@@ -29,6 +29,9 @@ class TinyMasked(nn.Module):
     def forward(self, x):
         return self.head(self.emb(x))
 
+
+# Architectures are registered in CODE (never from bundle data).
+register_arch("tiny", lambda vs: TinyMasked(vs))
 
 # list vocab exactly like build_dataset.py writes it (index = id)
 VOCAB = ["<pad>", "<unk>", "4624|2|na|na|ok", "4769|na|0x17|na|ok", "4662|na|na|na|na"]
@@ -47,11 +50,12 @@ def _alert(eid, host="DC01", logon=None, tenc=None, preauth=None, status=None):
 def _make_bundle(tmp: Path, threshold=0.0) -> Path:
     d = tmp / "bundle"
     d.mkdir()
-    torch.save(TinyMasked(len(VOCAB)), d / "model.pt")
+    torch.manual_seed(0)
+    torch.save(TinyMasked(len(VOCAB)).state_dict(), d / "model.pt")   # state_dict only
     (d / "vocab.json").write_text(json.dumps(VOCAB))
     (d / "meta.json").write_text(json.dumps({
-        "model": "bilstm", "threshold": threshold, "window_size": 4,
-        "mask_id": len(VOCAB),
+        "model": "tiny", "arch": "tiny", "threshold": threshold, "window_size": 4,
+        "mask_id": len(VOCAB), "vocab_size": len(VOCAB),
     }))
     return d
 
@@ -126,3 +130,90 @@ def test_replay_end_to_end_emits(tmp_path):
     recs = [json.loads(l) for l in out.read_text().splitlines() if l.strip()]
     assert recs and recs[0]["host"] == "DC01"
     assert recs[0]["integration"] == "adserve"
+
+
+# ---------------------------------------------------------------- security tests
+import pytest
+
+
+def test_loader_rejects_pickled_module(tmp_path):
+    """A full pickled nn.Module (the old, unsafe format) must be refused."""
+    d = _make_bundle(tmp_path)
+    torch.save(TinyMasked(len(VOCAB)), d / "model.pt")      # whole object, not state_dict
+    with pytest.raises(Exception):
+        ModelBundle.load(d, device="cpu")
+
+
+def test_loader_rejects_malicious_pickle_payload(tmp_path):
+    """weights_only=True must refuse a payload that would run code on unpickle."""
+    import pickle, os
+
+    class Evil:
+        def __reduce__(self):
+            return (os.system, ("echo pwned > " + str(tmp_path / "pwned"),))
+
+    d = _make_bundle(tmp_path)
+    with open(d / "model.pt", "wb") as fh:
+        pickle.dump(Evil(), fh)
+    with pytest.raises(Exception):
+        ModelBundle.load(d, device="cpu")
+    assert not (tmp_path / "pwned").exists()
+
+
+def test_unknown_arch_is_refused(tmp_path):
+    d = _make_bundle(tmp_path)
+    meta = json.loads((d / "meta.json").read_text())
+    meta["arch"] = "os.system"          # meta cannot name arbitrary callables
+    (d / "meta.json").write_text(json.dumps(meta))
+    with pytest.raises(RuntimeError, match="unknown architecture"):
+        ModelBundle.load(d, device="cpu")
+
+
+def test_sha256_pin_enforced(tmp_path):
+    d = _make_bundle(tmp_path)
+    good = sha256_file(d / "model.pt")
+    ModelBundle.load(d, device="cpu", expected_sha256=good)       # ok
+    with pytest.raises(RuntimeError, match="mismatch"):
+        ModelBundle.load(d, device="cpu", expected_sha256="0" * 64)
+
+
+def test_meta_path_cannot_change_sys_path(tmp_path):
+    import sys
+    d = _make_bundle(tmp_path)
+    meta = json.loads((d / "meta.json").read_text())
+    meta["admodel_path"] = "/tmp/evil"
+    (d / "meta.json").write_text(json.dumps(meta))
+    ModelBundle.load(d, device="cpu")
+    assert "/tmp/evil" not in sys.path
+
+
+def test_oversized_line_is_dropped(tmp_path):
+    from adserve.tailer import replay
+    p = tmp_path / "a.json"
+    big = '{"x":"' + "A" * 5000 + '"}'
+    p.write_text('{"ok":1}\n' + big + '\n{"ok":2}\n')
+    rows = list(replay(p, max_line_bytes=1000))
+    assert rows == [{"ok": 1}, {"ok": 2}]
+
+
+def test_non_object_json_is_skipped():
+    assert list(iter_json_lines(["[1,2]", "42", '{"a":1}'])) == [{"a": 1}]
+
+
+def test_host_cap_is_enforced():
+    s = WindowStore(window_size=3, idle_evict_s=999, max_hosts=3)
+    for i in range(10):
+        s.push(f"h{i}", 2)
+    assert s.active_hosts == 3
+
+
+def test_emitter_rotates_and_has_no_windows_fields(tmp_path):
+    from adserve.emit import AnomalyEmitter
+    out = tmp_path / "ml.json"
+    em = AnomalyEmitter(out, max_bytes=300, backups=2)
+    for _ in range(10):
+        rec = em.emit(host="DC01", score=9.0, threshold=1.0, model="m",
+                      window_tokens=["a"] * 5, detail={"peak_token": "a"})
+    assert "data" not in rec                         # advisory only: no data.win.eventdata
+    assert out.with_name("ml.json.1").exists()
+    assert not out.with_name("ml.json.3").exists()   # bounded retention
