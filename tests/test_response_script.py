@@ -48,5 +48,17 @@ def test_dcsync_rule_excludes_machine_accounts():
 
 
 def test_spray_parent_not_audit_success_only():
-    block = RULES[RULES.index('id="100513"'):RULES.index('id="100515"')]
-    assert "60104" in block or "60105" in block
+    """100513 (failed logon, base rule for spraying) must hang off the logon-failure
+    rule (60122), not audit-success-only (60103/60104/60105). Confirmed against the
+    DEPLOYED manager ruleset and real alert history (164 x 4625, 19 x 100515) - see
+    docs/SECURITY_REVIEW_FIXES.md."""
+    block = RULES[RULES.index('id="100513"'):RULES.index('id="100514"')]
+    assert "60122" in block
+
+
+def test_dcsync_machine_account_filter_present_and_hardened():
+    """DCSync (100514) must exclude machine accounts (names ending in '$').
+    8 of 92 100514 alerts in real lab data were DC01$ before this filter."""
+    block = RULES[RULES.index('id="100514"'):RULES.index('id="100515"')]
+    assert 'negate="yes"' in block
+    assert r"\$$" in block or r"\$" in block

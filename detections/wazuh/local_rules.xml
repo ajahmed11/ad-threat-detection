@@ -1,55 +1,71 @@
 <!-- Custom Wazuh detection rules for AD identity attacks (UFCE8A-30-3).
-     Core-4 detections, confirmed against real captured telemetry via wazuh-logtest. -->
-<group name="ad_identity_attacks,">
+     Mirrors the rules DEPLOYED on the lab manager (Wazuh 4.14.8), with one hardening change
+     marked below. Scope: the four identity attacks (+ the Kerberoast burst rule).
+     Parent rules: 60103 = Windows audit-success event, 60106 = logon success,
+     60122 = logon failure (unknown user / bad password).
+     NOTE: wazuh-logtest does not reproduce the eventchannel parent chain reliably, so
+     validate against real alerts (see docs/SECURITY_REVIEW_FIXES.md). -->
+<group name="windows,ad_identity_attack,">
 
+  <!-- 100510: AS-REP Roasting (T1558.004) -->
   <rule id="100510" level="10">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4768$</field>
+    <field name="win.eventdata.status">^0x0$</field>
     <field name="win.eventdata.preAuthType">^0$</field>
-    <description>AS-REP Roasting: TGT issued without pre-authentication for $(win.eventdata.targetUserName)</description>
+    <description>Possible AS-REP Roasting: Kerberos TGT issued without pre-authentication for $(win.eventdata.targetUserName)</description>
     <mitre><id>T1558.004</id></mitre>
+    <group>authentication_success,ad_identity_attack,</group>
   </rule>
 
+  <!-- 100511: Kerberoasting (T1558.003) -->
   <rule id="100511" level="10">
-    <if_sid>60103</if_sid>
+    <if_sid>60103,60106</if_sid>
     <field name="win.system.eventID">^4769$</field>
     <field name="win.eventdata.ticketEncryptionType">^0x17$</field>
-    <description>Kerberoasting: RC4 service ticket requested for $(win.eventdata.serviceName)</description>
+    <description>Possible Kerberoasting: RC4 service ticket requested for $(win.eventdata.serviceName) by $(win.eventdata.targetUserName)</description>
     <mitre><id>T1558.003</id></mitre>
+    <group>authentication_success,ad_identity_attack,</group>
   </rule>
 
+  <!-- 100512: repeated RC4 service-ticket requests -->
   <rule id="100512" level="12" frequency="3" timeframe="60">
     <if_matched_sid>100511</if_matched_sid>
-    <description>Kerberoasting: multiple RC4 service ticket requests in a short window</description>
+    <description>Multiple RC4 service ticket requests in a short window - possible Kerberoasting activity</description>
     <mitre><id>T1558.003</id></mitre>
+    <group>ad_identity_attack,</group>
   </rule>
 
-  <!-- Parent: Windows Security events. 60103 (audit success), 60104 (audit failure) and
-       60105 (logon failure) are all listed because the upstream classification of 4625
-       differs between Wazuh versions; the eventID field match below is what scopes it.
-       VERIFY with wazuh-logtest (see docs/SECURITY_REVIEW_FIXES.md) before relying on it. -->
+  <!-- 100513: failed logon (base rule for spraying) -->
   <rule id="100513" level="5">
-    <if_sid>60103,60104,60105</if_sid>
+    <if_sid>60122</if_sid>
     <field name="win.system.eventID">^4625$</field>
-    <description>AD telemetry: user authentication failed (base rule for spraying)</description>
+    <description>AD Telemetry: User Authentication Failed</description>
+    <group>authentication_failed,</group>
   </rule>
 
-  <rule id="100515" level="11" frequency="8" timeframe="120">
-    <if_matched_sid>100513</if_matched_sid>
-    <same_source_ip />
-    <different_field>win.eventdata.targetUserName</different_field>
-    <description>Password Spraying: multiple distinct account failures from one source in 2 minutes</description>
-    <mitre><id>T1110.003</id></mitre>
-  </rule>
-
+  <!-- 100514: DCSync (T1003.006) -->
   <rule id="100514" level="13">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4662$</field>
-    <field name="win.eventdata.properties">1131f6aa-9c07-11d1-f79f-00c04fc2dcd2</field>
-    <!-- Ignore machine accounts (DC-to-DC replication). Real DCSync uses a user/service account. -->
-    <field name="win.eventdata.subjectUserName" negate="yes">\$$</field>
-    <description>DCSync: directory replication rights used by $(win.eventdata.subjectUserName)</description>
+    <field name="win.eventdata.properties" type="pcre2">(?i)(1131f6aa-9c07-11d1-f79f-00c04fc2dcd2|1131f6ad-9c07-11d1-f79f-00c04fc2dcd2)</field>
+    <!-- HARDENING: ignore machine accounts (e.g. DC01$ - legitimate DC replication).
+         Confirmed in real lab data: 8 of 92 alerts were DC01$ before this filter;
+         live-tested on 2026-11-16 (see docs/SECURITY_REVIEW_FIXES.md). -->
+    <field name="win.eventdata.subjectUserName" type="pcre2" negate="yes">\$$</field>
+    <description>Possible DCSync: directory replication rights used by $(win.eventdata.subjectUserName)</description>
     <mitre><id>T1003.006</id></mitre>
+    <group>ad_identity_attack,</group>
+  </rule>
+
+  <!-- 100515: password spraying (T1110.003) -->
+  <rule id="100515" level="11" frequency="8" timeframe="120">
+    <if_matched_sid>100513</if_matched_sid>
+    <same_field>win.eventdata.ipAddress</same_field>
+    <different_field>win.eventdata.targetUserName</different_field>
+    <description>Possible password spraying: multiple distinct account failures from same IP within 2 minutes</description>
+    <mitre><id>T1110.003</id></mitre>
+    <group>authentication_failed,ad_identity_attack,</group>
   </rule>
 
 </group>

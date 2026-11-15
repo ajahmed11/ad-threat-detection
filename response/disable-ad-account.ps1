@@ -47,7 +47,21 @@ function Write-Log([string]$msg) {
     $safe = ($msg -replace '[\x00-\x1F\x7F]', ' ')
     if ($safe.Length -gt 400) { $safe = $safe.Substring(0, 400) }
     $ts = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-    Add-Content -Path $log -Value "$ts disable-ad-account: $safe"
+    $line = "$ts disable-ad-account: $safe"
+    # Retry under contention: the real Wazuh agent process also holds this log file
+    # open, which can transiently block a concurrent write on Windows (confirmed during
+    # live DC01 testing, 2026-11-16). Never let a logging failure crash the response
+    # itself - fall back to stderr so the message is not silently lost.
+    $maxAttempts = 8
+    for ($i = 0; $i -lt $maxAttempts; $i++) {
+        try {
+            Add-Content -Path $log -Value $line -ErrorAction Stop
+            return
+        } catch {
+            Start-Sleep -Milliseconds 250
+        }
+    }
+    [Console]::Error.WriteLine($line)
 }
 
 function Test-Protected($adUser, $domainSid) {
