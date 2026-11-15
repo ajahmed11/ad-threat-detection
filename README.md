@@ -1,4 +1,4 @@
-﻿# Active Directory Identity-Attack Detection â€” Rules vs Deep Learning
+# Active Directory Identity-Attack Detection â€” Rules vs Deep Learning
 
 [![CI](https://github.com/ajahmed11/ad-threat-detection/actions/workflows/ci.yml/badge.svg)](https://github.com/ajahmed11/ad-threat-detection/actions/workflows/ci.yml)
 
